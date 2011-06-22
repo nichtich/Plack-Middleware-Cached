@@ -23,16 +23,16 @@ my $cache = Mock->new;
 $counter = 1;
 $capp = builder {
     enable 'CHI', 
-	    cache => $cache, 
-	    set_as => sub {
-	        my ($response, $env) = @_;
-		    return if ($response->[2]->[0] =~ /^notme/);
-		    return ($response, expires_in => '20 min');
-	    },
+        cache => $cache, 
+        set_as => sub {
+            my ($response, $env) = @_;
+            return if ($response->[2]->[0] =~ /^notme/);
+            return ($response, expires_in => '20 min');
+        },
         get_as => sub {
             my ($response) = shift;
-	        return ($response, { 'xx' => $response->[2]->[0] });
-	    };
+            return ($response, { 'xx' => $response->[2]->[0] });
+        };
     $app;
 };
 
@@ -61,5 +61,5 @@ sub get { $_[0]->{objects}->{$_[1]} }
 sub set { 
     my ($self, $key, $object, @options) = @_;
     $self->{objects}->{$key} = $object;
-	$self->{options} = \@options;
+    $self->{options} = \@options;
 }

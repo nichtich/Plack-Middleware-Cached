@@ -13,8 +13,10 @@ sub prepare_app {
     my ($self) = @_;
 
     croak "expected cache" unless $self->cache;
+
+	# duck-type CHI
     croak "cache must be a CHI-like object" unless blessed $self->cache
-		and $self->cache->can('set') and $self->cache->can('get');
+        and $self->cache->can('set') and $self->cache->can('get');
 
     $self->env_key( sub { $_[0]->{REQUEST_URI} } ) unless $self->env_key;
     $self->set_as( sub { $_[0] } ) unless $self->set_as;
@@ -26,26 +28,26 @@ sub call {
 
     my $key = $self->env_key->($env);
 
-	return $self->app->($env) unless defined $key;
+    return $self->app->($env) unless defined $key;
 
     # get from cache
     my $object = $self->cache->get( $key );
-	if (defined $object) {
+    if (defined $object) {
         my ($response, $mod_env) = $self->get_as->( $object );
         if ($mod_env) {
-		    while ( my ($key, $value) = each %$mod_env ) {
-			    $env->{$key} = $value;
-			}
-		}
-		return $response;
-	}
+            while ( my ($key, $value) = each %$mod_env ) {
+                $env->{$key} = $value;
+            }
+        }
+        return $response;
+    }
 
     # pass through and cache afterwards
     my $response = $self->app->($env);
 
     my @options = $self->set_as->($response, $env);
-	if (@options and $options[0]) {
-	    $self->cache->set( $key, @options );
+    if (@options and $options[0]) {
+        $self->cache->set( $key, @options );
     }
 
     return $response;
@@ -58,10 +60,10 @@ __END__
 =head1 SYNOPSIS
 
     use Plack::Builder;
-	use Plack::Middleware::CHI;
+    use Plack::Middleware::CHI;
 
     builder {
-		enable 'Cache', cache => $chi;
+        enable 'Cache', cache => $chi;
         $app;
     }
 
@@ -105,16 +107,16 @@ an array with the object as first value and optional options to 'set' as
 additional values. For instance you can pass an expiration time like this:
 
     set_as => sub {
-	    my ($response, $env) = @_;
-		return ( $response, expires_in => '20 min' );
-	}
+        my ($response, $env) = @_;
+        return ( $response, expires_in => '20 min' );
+    }
 
 You can also use set_as to skip selected objects from caching:
 
     set_as => sub {
-	    my $response = shift;
-		return $some_condition ? $response : ();
-	}
+        my $response = shift;
+        return $some_condition ? $response : ();
+    }
 
 =item get_as
 
@@ -129,9 +131,9 @@ variables will be merged into the actual environment. For instance the
 following method adds (or overwrites) C<< $env->{'chi.cached'} = 'foo' >>:
 
     get_as => sub {
-	   my ($response) = shift;
-	   return ( $response, { 'chi.cached' => 'foo' } );
-	}
+       my ($response) = shift;
+       return ( $response, { 'chi.cached' => 'foo' } );
+    }
 
 =back
 

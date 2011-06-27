@@ -44,10 +44,6 @@ my $capp = builder {
             return ($response, expires_in => '20 min');
         },
 		env => [qw(counter)];
-#        env => get_as => sub {
-#            my ($response) = shift;
-#            return ($response, { 'xx' => $response->[2]->[0] });
-#        };
     $app;
 };
 

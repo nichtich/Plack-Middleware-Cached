@@ -14,30 +14,37 @@ run_test( builder {
     $app;
 } );
 
-$counter = 1;
-run_test( builder { 
-    enable 'Cached', Mock->new; 
+$capp = builder { 
+    enable 'Cached', cache => Mock->new, key => [qw(REQUEST_URI HTTP_COOKIE)];
 	$app 
-} );
+};
 
+$counter = 1;
+run_test( $capp );
+
+$res = $capp->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'doz=baz' } );
+is_deeply( $res, [200,[],['foo3']], 'call with cookies: foo (new)' );
+$res = $capp->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'doz=baz' } );
+is_deeply( $res, [200,[],['foo3']], 'call with cookies: foo (cached)' );
 
 sub run_test {
     my $app = shift;
 
     my $res = $app->( { REQUEST_URI => 'foo' } );
-    is_deeply( $res, [200,[],['foo1']], 'first call' );
+    is_deeply( $res, [200,[],['foo1']], 'first call: foo' );
 
     $res = $app->( { REQUEST_URI => 'bar' } );
-    is_deeply( $res, [200,[],['bar2']], 'second' );
+    is_deeply( $res, [200,[],['bar2']], 'second call: bar' );
 
     $res = $app->( { REQUEST_URI => 'foo' } );
-    is_deeply( $res, [200,[],['foo1']], 'got cached' );
+    is_deeply( $res, [200,[],['foo1']], 'third call: foo (cached)' );
 }
 
 my $cache = Mock->new;
 $counter = 1;
-my $capp = builder {
-    enable 'Cached', $cache, 
+$capp = builder {
+    enable 'Cached', 
+        cache => $cache, 
         set => sub {
             my ($response, $env) = @_;
             return if ($response->[2]->[0] =~ /^notme/);
@@ -63,7 +70,6 @@ is( $env->{counter}, 2, 'counter not cached' );
 
 $res = $capp->( { REQUEST_URI => 'notme', counter => 2 } );
 is_deeply( $res, [200,[],['notme3']], 'skip cache' );
-
 
 #use Data::Dumper;
 #print "\n".Dumper($res)."\n";

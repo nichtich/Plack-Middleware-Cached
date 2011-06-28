@@ -1,13 +1,16 @@
 package Plack::Middleware::Cached;
-# ABSTRACT: glues a cache to your PSGI application
+BEGIN {
+  $Plack::Middleware::Cached::VERSION = '0.11';
+}
+# ABSTRACT: Glues a cache to your PSGI application
 
 use strict;
 use warnings;
 
 use parent 'Plack::Middleware';
-use Scalar::Util 'blessed'; 
+use Scalar::Util qw(blessed reftype); 
 use Carp 'croak';
-
+use overload;
 use Plack::Util::Accessor qw(cache key set env);
 
 sub prepare_app {
@@ -37,7 +40,7 @@ sub call {
 
     my $key = $self->key ? $self->key->($env) : $env->{REQUEST_URI};
 
-    return $self->app->($env) unless defined $key;
+    return $self->app_code->($env) unless defined $key;
 
     # get from cache
     my $object = $self->cache->get( $key );
@@ -52,7 +55,7 @@ sub call {
     }
 
     # pass through and cache afterwards
-    my $response = $self->app->($env);
+    my $response = $self->app_code->($env);
 
     my @options = $self->set->($response, $env);
     if (@options and $options[0]) {
@@ -66,6 +69,25 @@ sub call {
     }
 
     return $response;
+}
+
+# allows caching PSGI-like applications not derived from Plack::Component
+sub app_code { 
+    my $self = shift;
+    my $app = $self->app;
+
+    return $app if ref $app and reftype $app eq 'CODE';
+
+    #my $callable = overload::Method( $self->app, '&{}' );
+    #if ( $callable ) {
+    #    return sub { $callable->( $self, @_ ) };
+    #}
+
+    if ( blessed $app and $app->can('call') ) {
+        return sub { $app->call(@_) };
+    }
+
+    return $app;
 }
 
 sub can_cache {

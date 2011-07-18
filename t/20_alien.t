@@ -29,7 +29,7 @@ sub test_app {
 package Mock::Cache;
 sub new { bless ({ objects => {} }, shift); }
 sub get { $_[0]->{objects}->{$_[1]} }
-sub set { 
+sub set {
     my ($self, $key, $object, @options) = @_;
     $self->{objects}->{$key} = $object;
     $self->{options} = \@options;

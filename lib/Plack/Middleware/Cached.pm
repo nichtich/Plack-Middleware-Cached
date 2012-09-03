@@ -6,7 +6,7 @@ package Plack::Middleware::Cached;
 use parent 'Plack::Middleware';
 use Scalar::Util qw(blessed reftype);
 use Carp 'croak';
-use Plack::Util::Accessor qw(cache key set env);
+use Plack::Util::Accessor qw(cache key set env debug_header);
 use utf8;
 
 sub prepare_app {
@@ -49,12 +49,14 @@ sub call {
                 $env->{$key} = $value;
             }
         }
+        if(my $debug_header = $self->debug_header()) {
+            push @{$response->[1]}, $debug_header => 'cache';
+        }
         return $response;
     }
 
     # pass through and cache afterwards
     my $response = $self->app_code->($env);
-
     my @options = $self->set->($response, $env);
     if (@options and $options[0]) {
         $options[0] = [ $options[0] ];
@@ -66,6 +68,10 @@ sub call {
             };
         }
         $self->cache->set( $key, @options );
+    }
+
+    if(my $debug_header = $self->debug_header()) {
+        push @{$response->[1]}, $debug_header => 'app';
     }
 
     return $response;
@@ -110,7 +116,9 @@ __END__
         enable 'Cached',               # enable caching
             cache => $cache,           # using this cache
             key   => 'REQUEST_URI',    # using this key from env
-            env   => ['my.a','my.b'];  # and cache $env{'my.a'} and $env{'my.b'}
+            env   => ['my.a','my.b'];  # and cache $env{'my.a'} and $env{'my.b'},
+            debug_header => 'x-cache-debug'; 
+                                       # add a debug header of x-cache-debug
         $app;
     }
 
@@ -173,6 +181,11 @@ request is not cached.
 
 Name of an environment variable or array reference with multiple variables from
 the environment that should be cached together with a response.
+
+=item debug_header
+
+Add an extra header for debugging, will have a value of either
+'app' (content generated from the app) or 'cached' content served from the cache
 
 =item set
 

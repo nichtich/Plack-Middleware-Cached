@@ -3,6 +3,9 @@ use Test::More;
 use Plack::Builder;
 use Plack::Middleware::Cached;
 
+use lib 't/';
+require 'mock-cache';
+
 my $counter = 1;
 my $app     = sub {
     my $env = shift;
@@ -10,9 +13,24 @@ my $app     = sub {
     [ 200, [], [ $env->{REQUEST_URI} . ( $counter++ ) ] ];
 };
 
+my $debug_header = sub {
+    my $app = shift;
+    sub {
+        my $env = shift;
+        my $res = $app->($env);
+        Plack::Util::response_cb($res, sub {
+            my $res = shift;
+            push @{$res->[1]},
+                'x-pm-cache-debug' =>
+                $env->{'plack.middleware.cached'} ? 'cache' : 'app';
+            $res;
+        });
+    };
+};
+
 run_test(
     builder {
-        enable 'Cached', cache => Mock->new;
+        enable 'Cached', cache => Mock::Cache->new;
         $app;
     },
     0
@@ -22,9 +40,9 @@ run_test(
 $counter = 1;
 run_test(
     builder {
+        enable $debug_header;
         enable 'Cached',
-            cache        => Mock->new,
-            debug_header => 'x-pm-cache-debug';
+            cache        => Mock::Cache->new;
         $app;
     },
     1
@@ -53,14 +71,3 @@ sub run_test {
 }
 
 done_testing;
-
-package Mock;
-use Clone qw(clone);    # use clone to make test work like a real cache
-sub new { bless( { objects => {} }, shift ); }
-sub get { $_[0]->{objects}->{ $_[1] } }
-
-sub set {
-    my ( $self, $key, $object, @options ) = @_;
-    $self->{objects}->{$key} = clone($object);
-    $self->{options} = \@options;
-}

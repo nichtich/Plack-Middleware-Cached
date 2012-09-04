@@ -1,13 +1,17 @@
+use strict;
 use Test::More;
 use Plack::Builder;
 use Plack::Middleware::Cached;
+
+use lib 't/';
+require 'mock-cache';
 
 #
 # This test checks that apps not derived from Plack::Component are allowed
 #
 
 test_app( Alien::App::Foo->new );
-# test_app( Alien::App::Bar->new );
+#test_app( Alien::App::Bar->new );
 
 done_testing;
 
@@ -19,20 +23,11 @@ sub test_app {
         cache => Mock::Cache->new,
     );
 
-    $res = $wrapped->( { REQUEST_URI => 'foo' } );
+    my $res = $wrapped->( { REQUEST_URI => 'foo' } );
     is_deeply( $res, { foo => 1 }, 'first call' );
 
     $res = $wrapped->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'bar=doz' } );
     is_deeply( $res, { foo => 1 }, 'from cache foo (cached)' );
-}
-
-package Mock::Cache;
-sub new { bless ({ objects => {} }, shift); }
-sub get { $_[0]->{objects}->{$_[1]} }
-sub set {
-    my ($self, $key, $object, @options) = @_;
-    $self->{objects}->{$key} = $object;
-    $self->{options} = \@options;
 }
 
 1;

@@ -1,6 +1,10 @@
+use strict;
 use Test::More;
 use Plack::Builder;
 use Plack::Middleware::Cached;
+
+use lib 't/';
+require 'mock-cache';
 
 my $counter = 1;
 my $app = sub {
@@ -10,19 +14,21 @@ my $app = sub {
 };
 
 run_test( builder {
-    enable 'Cached', cache => Mock->new;
+    enable 'Cached', cache => Mock::Cache->new;
     $app;
 } );
 
-$capp = builder {
-    enable 'Cached', cache => Mock->new, key => [qw(REQUEST_URI HTTP_COOKIE)];
+my $capp = builder {
+    enable 'Cached',
+        cache => Mock::Cache->new,
+        key => [qw(REQUEST_URI HTTP_COOKIE)];
     $app
 };
 
 $counter = 1;
 run_test( $capp );
 
-$res = $capp->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'doz=baz' } );
+my $res = $capp->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'doz=baz' } );
 is_deeply( $res, [200,[],['foo3']], 'call with cookies: foo (new)' );
 $res = $capp->( { REQUEST_URI => 'foo', HTTP_COOKIE => 'doz=baz' } );
 is_deeply( $res, [200,[],['foo3']], 'call with cookies: foo (cached)' );
@@ -41,7 +47,7 @@ sub run_test {
 }
 
 $capp = builder {
-    enable 'Cached', cache => Mock->new, key => 'dummy';
+    enable 'Cached', cache => Mock::Cache->new, key => 'dummy';
     sub { [200,[],[shift->{REQUEST_URI}]] };
 };
 
@@ -53,7 +59,7 @@ $res = $capp->( { REQUEST_URI => 'baz', dummy => 456 } );
 is_deeply( $res, [200,[],['baz']], 'scalar key' );
 
 
-my $cache = Mock->new;
+my $cache = Mock::Cache->new;
 $counter = 1;
 $capp = builder {
     enable 'Cached',
@@ -84,16 +90,4 @@ is( $env->{counter}, 2, 'counter not cached' );
 $res = $capp->( { REQUEST_URI => 'notme', counter => 2 } );
 is_deeply( $res, [200,[],['notme3']], 'skip cache' );
 
-#use Data::Dumper;
-#print "\n".Dumper($res)."\n";
-
 done_testing;
-
-package Mock;
-sub new { bless ({ objects => {} }, shift); }
-sub get { $_[0]->{objects}->{$_[1]} }
-sub set {
-    my ($self, $key, $object, @options) = @_;
-    $self->{objects}->{$key} = $object;
-    $self->{options} = \@options;
-}

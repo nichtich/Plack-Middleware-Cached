@@ -222,4 +222,6 @@ L<Plack::Middleware::Cache> by Ingy döt Net implements a simple file
 cache for PSGI responses. Panu Ervamaa created a more general module of
 same name, available at L<https://github.com/pnu/Plack-Middleware-Cache>.
 
+=encoding utf8
+
 =cut

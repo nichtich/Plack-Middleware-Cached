@@ -8,7 +8,7 @@ use Carp 'croak';
 use Plack::Util::Accessor qw(cache key set env);
 use utf8;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 sub prepare_app {
     my ($self) = @_;
@@ -58,29 +58,32 @@ sub call {
     # pass through and cache afterwards
     my $response = $self->app_code->($env);
 
-    return $self->response_cb($response, sub {
-        my ($ret) = @_;
-        my $seen;
-        my $body = '';
-        return sub {
-            my ($chunk) = @_;
-            if ($seen++ and not defined $chunk) {
-                my $new_response = [ $ret->[0], $ret->[1], [ $body ] ];
-                $self->cache_reponse($key, $new_response, $env);
-                return;
-            }
-            $body .= $chunk if defined $chunk;
-            return $chunk;
-        };
-    }) if ref $response eq 'CODE';
-
-    $self->cache_reponse($key, $response, $env);
+    # streaming response 
+    if (ref $response eq 'CODE') {
+        $response = $self->response_cb($response, sub {
+            my ($ret) = @_;
+            my $seen;
+            my $body = '';
+            return sub {
+                my ($chunk) = @_;
+                if ($seen++ and not defined $chunk) {
+                    my $new_response = [ $ret->[0], $ret->[1], [ $body ] ];
+                    $self->cache_response($key, $new_response, $env);
+                    return;
+                }
+                $body .= $chunk if defined $chunk;
+                return $chunk;
+            };
+        });
+    } else {
+        $self->cache_response($key, $response, $env);
+    }
 
     return $response;
 }
 
-
-sub cache_reponse {
+# cache a response based on configuration of this middleware
+sub cache_response {
     my ($self, $key, $response, $env) = @_;
 
     my @options = $self->set->($response, $env);
@@ -191,6 +194,8 @@ response came from the cache or from the wrapped application like this:
         $app;
     },
 
+Caching delayed/streaming responses is supported as well.
+
 =head1 CONFIGURATION
 
 =over 4
@@ -239,10 +244,6 @@ You can also use this method to skip selected responses from caching:
     }
 
 =back
-
-=head1 LIMITATIONS
-
-The current version of this module does not support streaming responses.
 
 =head1 SEE ALSO
 

@@ -1,13 +1,14 @@
 ﻿use strict;
 use warnings;
 package Plack::Middleware::Cached;
-#ABSTRACT: Glues a cache to your PSGI application
 
 use parent 'Plack::Middleware';
 use Scalar::Util qw(blessed reftype);
 use Carp 'croak';
 use Plack::Util::Accessor qw(cache key set env);
 use utf8;
+
+our $VERSION = '0.13';
 
 sub prepare_app {
     my ($self) = @_;
@@ -90,6 +91,10 @@ sub can_cache {
 }
 
 1;
+
+=head1 NAME
+
+Plack::Middleware::Cached - Glues a cache to your PSGI application
 
 =head1 SYNOPSIS
 
@@ -224,4 +229,15 @@ same name, available at L<https://github.com/pnu/Plack-Middleware-Cache>.
 
 =encoding utf8
 
+=head1 AUTHOR
+ 
+Jakob Voß
+ 
+=head1 COPYRIGHT AND LICENSE
+ 
+This software is copyright (c) 2013 by Jakob Voß.
+ 
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+ 
 =cut

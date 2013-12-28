@@ -57,6 +57,32 @@ sub call {
 
     # pass through and cache afterwards
     my $response = $self->app_code->($env);
+
+    return $self->response_cb($response, sub {
+        my ($ret) = @_;
+        my $seen;
+        my $body = '';
+        return sub {
+            my ($chunk) = @_;
+            if ($seen++ and not defined $chunk) {
+                my $new_response = [ $ret->[0], $ret->[1], [ $body ] ];
+                $self->cache_reponse($key, $new_response, $env);
+                return;
+            }
+            $body .= $chunk if defined $chunk;
+            return $chunk;
+        };
+    }) if ref $response eq 'CODE';
+
+    $self->cache_reponse($key, $response, $env);
+
+    return $response;
+}
+
+
+sub cache_reponse {
+    my ($self, $key, $response, $env) = @_;
+
     my @options = $self->set->($response, $env);
     if (@options and $options[0]) {
         $options[0] = [ $options[0] ];
@@ -69,8 +95,6 @@ sub call {
         }
         $self->cache->set( $key, @options );
     }
-
-    return $response;
 }
 
 # allows caching PSGI-like applications not derived from Plack::Component

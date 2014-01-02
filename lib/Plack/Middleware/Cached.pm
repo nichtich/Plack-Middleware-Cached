@@ -8,7 +8,7 @@ use Carp 'croak';
 use Plack::Util::Accessor qw(cache key set env);
 use utf8;
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 sub prepare_app {
     my ($self) = @_;
